@@ -206,7 +206,7 @@ func fillCacheNames() {
 	}
 	e = filepath.Walk(dname, w)
 	if e != nil {
-		panic(e)
+		color.Red("%s", e)
 	}
 
 	xmlLocCacheInited = true
