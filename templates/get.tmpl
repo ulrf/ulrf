@@ -1,0 +1,152 @@
+<div class="card no-border">
+  <div class="card-block">
+    <h4 class="card-title">{{.org.FullName}}</h4>
+    <table class="table">
+  <!-- <thead>
+    <tr>
+      <th>#</th>
+      <th>First Name</th>
+      <th>Last Name</th>
+      <th>Username</th>
+    </tr>
+  </thead> -->
+<!-- type Org struct {
+  Id          int64
+  DocLocation string `json:"doc_location" xorm:"TEXT"`
+  DocId       int    `json:"doc_id"`
+
+  FullName  string `json:"full_name" xorm:"TEXT"`
+  ShortName string `json:"short_name" xorm:"TEXT"`
+  RegionId  int    `json:"region_id" xorm:"index"`
+  City      string `xorm:"index"`
+
+  INN    string   `json:"inn" xorm:"inn"`
+  OGRN   string   `json:"ogrn" xorm:"unique index 'ogrn'"`
+  OKVED  string   `json:"okved" xorm:"index 'okved'"`
+  OKVEDS []string `xorm:"'okveds'"`
+  OPF    string   `json:"opf" xorm:"'opf'"`
+  KPP    string   `json:"kpp" xorm:"'kpp'"`
+
+  //Data Data
+} -->
+  <tbody>
+  <tr>
+      <th scope="row">Короткое название</th>
+      <td>{{.org.ShortName}}</td>
+    </tr>
+    {{if .svul.Address.Address.Index}}<tr>
+      <th scope="row">Адрес</th>{{$a := .svul.Address.Address}}
+      <td>{{$a.Index}}, {{$a.Region.Name}} {{$a.Region.Type}}, {{$a.City.Type}} {{$a.City.Name}},  {{$a.Street.Type}} {{$a.Street.Name}}, {{$a.House}}, {{if $a.Korpus}}{{$a.Korpus}}корп.,{{end}} кв. {{$a.Kvartira}}</td>
+    </tr>{{end}}
+    {{if .svul.Born.DateReg}}<tr>
+      <th>Дата</th>
+      <td>{{.svul.Born.DateReg}}</td>
+    </tr>{{end}}
+    <tr>
+      <th>Город</th>
+      <td>{{.org.City}}</td>
+    </tr>
+    <tr>
+      <th scope="row">ОГРН</th>
+      <td>{{.org.OGRN}} {{if .svul.DateOGRN}}(Дата: {{.svul.DateOGRN}}){{end}}</td>
+    </tr>
+    <tr>
+      <th scope="row">ИНН</th>
+      <td>{{.org.INN}}</td>
+    </tr>
+    <tr>
+      <th scope="row">ОПФ</th>
+      <td>{{.org.OPF}} ({{.svul.FullNameOpf}})</td>
+    </tr>
+   <tr>
+      <th scope="row">КПП</th>
+      <td>{{.org.KPP}}</td>
+    </tr>
+   {{if .svul.Born.Code}}<tr>
+      <th scope="row">Код образования ЮЛ</th>
+      <td>{{.svul.Born.Code}}</td>
+    </tr>{{end}}
+   {{if .svul.Born.DateReg }}<tr>
+      <th scope="row">Дата регистрации ЮЛ</th>
+      <td>{{ .svul.Born.DateReg }}</td>
+    </tr>{{end }}
+  {{if .svul.Born.NameRO }} <tr>
+      <th scope="row">Регистрационный орган</th>
+      <td>{{ .svul.Born.NameRO }}</td>
+    </tr>{{ end }}
+   {{if .svul.Born.BornYL.Code }}<tr>
+      <th scope="row">Код способа образования ЮЛ</th>
+      <td>{{ .svul.Born.BornYL.Code }}</td>
+    </tr>{{ end }}
+   {{if .svul.Born.BornYL.Code }}<tr>
+      <th scope="row">Наименование способа образования ЮЛ</th>
+      <td>{{ .svul.Born.BornYL.Title }}</td>
+    </tr>{{ end }}
+   <tr>
+      <th scope="row">Регистрационный орган</th>
+      <td>{{ .svul.RegOrg.Name }} ({{ .svul.RegOrg.Address }})</td>
+    </tr>
+   <tr>
+      <th scope="row">Налоговый орган</th>
+      <td>{{ .svul.Accounting.NalogOrg.Name }} ({{ .svul.Accounting.NalogOrg.Code }})</td>
+    </tr>
+   {{if .svul.FSS.Num}}<tr>
+      <th scope="row">Регистрационный номер ФСС</th>
+      <td>{{.svul.FSS.Num}} (Дата: {{.svul.FSS.Date}})</td>
+    </tr>{{end}}
+   {{if .svul.Capital.Sum}}<tr>
+      <th scope="row">Уставной капитал</th>
+      <td>{{.svul.Capital.Sum}} (Вид: {{.svul.Capital.Name}})</td>
+    </tr>{{end}}
+    {{if .svul.PF.Num}}<tr>
+      <td><b>Пенсионный фонд</b></td>
+      <td>{{.svul.PF.PFOrg.Name}} ({{.svul.PF.Num}})</td>
+    </tr>{{end}}
+   {{if .svul.Positions.FizFace.LastName}}<tr>
+      <th scope="row">Должностные лица</th>
+      <td><ul>
+        <li>
+          <b>{{.svul.Positions.Position.Name}}</b> - {{.svul.Positions.FizFace.LastName}} {{.svul.Positions.FizFace.FirstName}} {{.svul.Positions.FizFace.Patronymic}} ({{.svul.Positions.Position.NameType}})
+        </li>
+      </ul>
+      </td>
+    </tr>{{end}}
+    <tr>
+      <th scope="row">ОКВЭД (основной)</th>
+      <td>{{.org.OKVED}} {{(.okveds.Get .org.OKVED).Text}}</td>
+    </tr>
+{{range .org.OKVEDS}}
+    <tr>
+      <th scope="row">ОКВЭД (дополнительный)</th>
+      <td>{{.}} {{($.okveds.Get .).Text}}</td>
+    </tr>
+{{end}}
+
+   {{if .svul.EGRYL}}<tr>
+      <th scope="row">Записи ЕГРЮЛ</th>
+      <td>{{len .svul.EGRYL}}<!--<ul>{{range .svul.EGRYL}}<li>{{.RegOrg.Name}} (Код: {{.RegOrg.Code}}) 
+        {{if .Vid.Name}}{{.Vid.Name}}{{end}}
+      {{if .Doc}}
+
+       <ul><b>Документы:<br></b> {{range .Doc}}<li>{{.Name}}{{end}}</ul>{{end}} {{end}}</ul>
+       --></td>
+    </tr>{{end}}
+
+</tbody>
+</table>
+  </div>
+</div>
+<h2>Похожие компании</h2>
+<div class="row">
+{{range .orgs}}
+<div class="col-md-4">
+  <div class="card list-search">
+  <div class="card-block">
+    <h4 class="card-title">{{.ShortName}}<br> <small>{{.FullName}}</small>  </h4>
+    <p><b>ОГРН:</b> {{.OGRN}} <b>ИНН:</b> {{.INN}} </p>
+    <a href="/{{.Id}}">Открыть карточку</a>
+  </div>
+</div>
+</div>
+{{end}}
+</div>

@@ -1,0 +1,19 @@
+<div class="jumbotron">
+  <h1 class="display-1">Открытый каталог российских фирм
+</h1>
+  <!-- <p class="lead">Это сайт-каталог российских фирм.</p> -->
+  <hr class="m-y-2">
+  <p class="lead">
+    <a class="btn btn-primary btn-lg" href="/map" role="button">Перейти в каталог</a>
+  </p>
+</div>
+
+<div>
+<h2>Каталог ОКВЭД</h2>
+	<ul class="list-group">
+	{{range .okveds.Parents}}
+	<li class="list-group-item"><span class="label label-default label-pill">{{.Section}}</span> <a href="/okveds/{{.Id}}">{{.Text}}</a> 
+</li>
+{{end}}
+</ul>
+</div>

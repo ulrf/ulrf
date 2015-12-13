@@ -22,3 +22,11 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+
+conf/app.ini
+base.leveldb
+*.search
+log/*
+orgs
+ulrf

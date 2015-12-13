@@ -1,0 +1,17 @@
+[app]
+domain = entities.zz.su
+loglevel = trace
+
+[dev]
+db.user = god
+db.pass = pass
+db.name = sqlbench
+
+bleve.enabled = false
+
+[prod]
+db.user = egrul
+db.name = egrul
+db.pass = qHw9pqR3uVgeFzuG
+
+bleve.enabled = false

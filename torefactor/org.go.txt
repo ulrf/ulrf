@@ -1,0 +1,56 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+
+	var (
+		errors []error
+		durs   []time.Duration
+		woo    []Svul
+	)
+
+	for i := 0; i < 20; i++ {
+		s, d, e := get(rand.Intn(50000))
+		if e != nil {
+			errors = append(errors, e)
+		}
+		if d != 0 {
+			durs = append(durs, d)
+		}
+		if s.OGRN == "" {
+			woo = append(woo, s)
+		}
+	}
+
+	sum := 0.0
+	for _, v := range durs {
+		sum += v.Seconds()
+	}
+
+	fmt.Printf("%d %f\n", len(errors), float64(sum)/float64(len(durs)))
+	fmt.Println("%\nv", errors)
+}
+
+func get(id int) (s Svul, d time.Duration, e error) {
+	start := time.Now()
+	o := Org{}
+	_, e = eng.Id(id).Get(&o)
+	if e != nil {
+		return
+	}
+	s, e = getOrgData(o.DocLocation, o.DocId)
+	if e != nil {
+		return
+	}
+	if s.OGRN != o.OGRN {
+		e = fmt.Errorf("OGRN %s != %s", s.OGRN, o.OGRN)
+	}
+	d = time.Since(start)
+	return
+}

@@ -1,0 +1,12 @@
+<input type="text" class="form-control m-b" placeholder="Поиск региона" onkeypress="city_filter(this.value)">
+<div id="regions">
+{{ range .regions}}
+<div class="item col-md-4" data-region="{{.}}">
+	<div class="">
+  <div class="card-block">
+    <a href="/search?city={{.}}" class=""><h4 class="card-title">{{.}}</h4></a>
+  </div>
+</div>
+</div>
+{{end}}
+</div>

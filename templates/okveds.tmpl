@@ -1,0 +1,6 @@
+<ul class="list-group">
+	{{range .okveds.Parents}}
+	<li class="list-group-item"><span class="label label-default label-pill">{{.Section}}</span> <a href="/okveds/{{.Id}}">{{.Text}}</a> 
+</li>
+{{end}}
+</ul>

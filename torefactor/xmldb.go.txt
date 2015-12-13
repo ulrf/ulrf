@@ -1,0 +1,142 @@
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/xml"
+	"fmt"
+	"github.com/fatih/color"
+	"io"
+	"io/ioutil"
+	"pure/svul"
+	"time"
+
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
+)
+
+var (
+	XMLDBPath = "/home/god/d1/home/god/Downloads/EGRUL/EGRUL/01.01.2015_FULL"
+)
+
+func init() {
+	dname := XMLDBPath
+	files, e := ioutil.ReadDir(dname)
+	if e != nil {
+		panic(e)
+	}
+
+	for _, f := range files {
+		if !f.IsDir() {
+			var rc *zip.ReadCloser
+			rc, e = zip.OpenReader(dname + "/" + f.Name())
+			if e != nil {
+				return
+			}
+			for _, v := range rc.File {
+				xmlLocCache[v.Name] = f.Name()
+			}
+		}
+	}
+}
+
+type Doc struct {
+	XMLName xml.Name `xml:"EGRUL"`
+
+	Date string `xml:"ДатаВыг,attr"`
+
+	Svuls []svul.Svul `xml:"СвЮЛ"`
+}
+
+var xmlLocCache = map[string]string{}
+
+func getXmlLoc(name string) string {
+	if fname, ok := xmlLocCache[name]; ok {
+		return fname
+	}
+	return ""
+}
+
+func getOrgData(docLoc string, id int) (s svul.Svul, e error) {
+	start := time.Now()
+	dname := XMLDBPath
+
+	var rc *zip.ReadCloser
+	dl := getXmlLoc(docLoc)
+	if dl == "" {
+		e = fmt.Errorf("%s empty doc with id %d", dl, id)
+		return
+	}
+	rc, e = zip.OpenReader(dname + "/" + dl)
+	if e != nil {
+		return
+	}
+	color.Green("[reader opened] %s", time.Since(start))
+	for _, v := range rc.File {
+		if v.Name == docLoc {
+			color.Green("[file founded] %s", time.Since(start))
+			var (
+				xm  io.ReadCloser
+				bts []byte
+			)
+			xm, e = v.Open()
+			if e != nil {
+				return
+			}
+			bts, e = fixed(xm)
+			if e != nil {
+				return
+			}
+			color.Green("[file fixed] %s", time.Since(start))
+			e = xm.Close()
+			if e != nil {
+				return
+			}
+
+			s, e = unmarshal(bts, id)
+			if e != nil {
+				return
+			}
+			color.Green("[xml unmarshaled] %s", time.Since(start))
+			return
+		}
+	}
+	rc.Close()
+
+	return
+}
+
+func fixed(in io.Reader) ([]byte, error) {
+	//r := bytes.NewReader(in)
+	tr := transform.NewReader(in, charmap.Windows1251.NewDecoder())
+	buf, e := ioutil.ReadAll(tr)
+	if e != e {
+		return nil, e
+	}
+	buf = bytes.Replace(buf, []byte("windows-1251"), []byte("utf-8"), 1)
+	return buf, e
+}
+
+func unmarshal(in []byte, id int) (s svul.Svul, e error) {
+	f := bytes.NewReader(in)
+	dec := xml.NewDecoder(f)
+	i := 0
+	for {
+		t, _ := dec.Token()
+		if t == nil {
+			break
+		}
+		switch se := t.(type) {
+		case xml.StartElement:
+			if se.Name.Local == "СвЮЛ" {
+				if i != id {
+					i++
+					continue
+				}
+				e = dec.DecodeElement(&s, &se)
+				return
+			}
+		}
+	}
+	return
+}

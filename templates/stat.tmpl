@@ -1,0 +1,22 @@
+<table class="table">
+	<tbody>
+		<tr>
+			<td>Организаций в базе</td>
+			<td>{{.stat.DocCount}}</td>
+		</tr>
+		<tr>
+			<td>Скорость индексации</td>
+			<td>{{printf "%.0f" .stat.IndexSpeed}} док./сек.</td>
+		</tr>
+		<tr>
+			<td>Документов проиндексировано</td>
+			<td>{{printf  "%.2f%%" .stat.IndexTitleRatio}}</td>
+		</tr>
+		<tr>
+			<td>Осталось</td>
+			<td>{{printf "%.1fч" .stat.Remaining.Hours }}</td>
+		</tr>
+	</tbody>
+</table>
+
+{{.}}

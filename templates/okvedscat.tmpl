@@ -1,0 +1,31 @@
+<ul class="list-group">
+	{{range .okveds.Parents}}
+	{{if eq .Id $.okvedsCat}}
+	<li class="list-group-item"><span class="label label-default label-pill">{{.Section}}</span> {{.Text}}
+	<ul class="list-group">
+		{{range $.okveds.SubSections $.okvedsCat}}
+		<li class="list-group-item"><span class="label label-default label-pill">{{.SubSection}}</span> {{.Text}}
+		<ul class="list-group">
+			{{range $.okveds.Childs .Id}}
+			<li class="list-group-item">{{.Code}} {{.Text}}
+			<ul class="list-group">
+				{{range $.okveds.Childs .Id}}
+				<li class="list-group-item">{{.Code}} {{.Text}}
+					<ul class="list-group">
+				{{range $.okveds.Childs .Id}}
+				<li class="list-group-item">{{.Code}} <a href="/search?okved={{.Code}}">{{.Text}}</a>
+				</li>
+				{{end}}
+			</ul>
+				</li>
+				{{end}}
+			</ul>
+			</li>
+			{{end}}
+		</ul>
+		</li>
+		{{end}}
+	</ul>
+</li>{{end}}
+{{end}}
+</ul>

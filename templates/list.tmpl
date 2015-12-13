@@ -1,0 +1,31 @@
+{{if .total}}<div class="m-t m-b">
+Найдено результатов:  <b>{{.total}}</b>
+</div>{{end}}
+{{range .orgs}}
+<div class="card list-search">
+  <div class="card-block">
+    <h4 class="card-title">{{if .ShortName}}{{.ShortName}}<br> <small>{{.FullName}}</small>{{else}}{{.FullName}}{{end}}  </h4>
+    <p><b>ОГРН:</b> {{.OGRN}}{{if .INN}} <b>ИНН:</b> {{.INN}} {{end}}</p>
+    <a href="/{{.Id}}">Открыть карточку</a>
+  </div>
+</div>
+{{end}}
+<nav>
+  <ul class="pagination">{{if .prevPage}}
+    <li>
+      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.prevPage}}" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+        <span class="sr-only">Previous</span>
+      </a>
+    </li>{{end}}
+     {{range .pagination}}
+    <li {{if eq . $.currPage}}class="active"{{end}}><a href="/search?city={{$.searchCity}}&okved={{$.searchOkved}}&q={{$.searchQuery}}&p={{.}}">{{.}}</a></li>
+    {{end}}
+    {{if .nextPage}}<li>
+      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.nextPage}}" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+        <span class="sr-only">Next</span>
+      </a>{{end}}
+    </li>
+  </ul>
+</nav>
