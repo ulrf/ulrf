@@ -1,6 +1,18 @@
 <div class="card no-border">
   <div class="card-block">
     <h4 class="card-title">{{.org.FullName}}</h4>
+    <div class="row">
+      <div class="col-md-4">
+    <img width="300px" class="fl" src="https://sigil.cupcake.io/{{.org.FullName}}" alt="">        
+      </div>
+      <div class="col-md-8">
+        <div id="map" style="width: 100%; height: 300px"></div>
+<div id="coords" class="invisible">{{if .svul.Address.Address.Index}}{{$a := .svul.Address.Address}}
+      {{$a.Index}}, {{$a.Region.Name}} {{$a.Region.Type}}, {{$a.City.Type}} {{$a.City.Name}},  {{$a.Street.Type}} {{$a.Street.Name}}, {{$a.House}}, {{if $a.Korpus}}{{$a.Korpus}}корп.,{{end}} кв. {{$a.Kvartira}}{{end}}</div>
+      </div>
+    </div>
+
+    
     <table class="table">
   <!-- <thead>
     <tr>
@@ -42,9 +54,17 @@
       <th>Дата</th>
       <td>{{.svul.Born.DateReg}}</td>
     </tr>{{end}}
+{{if .svul.Dead.Date}}<tr>
+      <th class="text-danger">Дата ликвидации</th>
+      <td>{{.svul.Dead.Date}} ({{.svul.Dead.Why.WhyName}})</td>
+    </tr>{{end}}
     <tr>
       <th>Город</th>
       <td>{{.org.City}}</td>
+    </tr>
+    <tr>
+      <th>Регион</th>
+      <td>{{.org.RegionId}}</td>
     </tr>
     <tr>
       <th scope="row">ОГРН</th>
@@ -131,7 +151,9 @@
        <ul><b>Документы:<br></b> {{range .Doc}}<li>{{.Name}}{{end}}</ul>{{end}} {{end}}</ul>
        --></td>
     </tr>{{end}}
-
+<th scope="row">Все поля</th>
+      <td><a href="/dump/{{.org.OGRN}}">Посмотреть все поля</a></td>
+    </tr>
 </tbody>
 </table>
   </div>
@@ -142,9 +164,8 @@
 <div class="col-md-4">
   <div class="card list-search">
   <div class="card-block">
-    <h4 class="card-title">{{.ShortName}}<br> <small>{{.FullName}}</small>  </h4>
+    <a href="/{{.OGRN}}"><h4 class="card-title">{{.ShortName}}<br> <small>{{.FullName}}</small>  </h4></a>
     <p><b>ОГРН:</b> {{.OGRN}} <b>ИНН:</b> {{.INN}} </p>
-    <a href="/{{.Id}}">Открыть карточку</a>
   </div>
 </div>
 </div>

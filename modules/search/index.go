@@ -1,11 +1,6 @@
 package search
 
-import (
-	"github.com/fatih/color"
-	"github.com/ulrf/ulrf/models"
-)
-
-func IndexTitle(ogrn string, data models.ForIndex) error {
+/*func IndexTitle(ogrn string, data models.ForIndex) error {
 	ix := indexes[indexTitleName]
 	e := ix.Index(ogrn, data)
 	if e != nil {
@@ -45,13 +40,11 @@ func IndexCity(ogrn string, data models.ForCityIndex) error {
 func IndexCityBatch(city string, os []models.Org) error {
 	ix := indexes[indexCityName]
 	batch := ix.NewBatch()
+	color.Green("match indexing %s, len %d", city, len(os))
 
 	for _, o := range os {
 		o.City = city
-		color.Green("indexing %s", o.City)
 		batch.Index(o.OGRN, o.ForCityIndex())
-		o.City = ""
-		o.OGRN = ""
 	}
 
 	e := ix.Batch(batch)
@@ -92,3 +85,4 @@ func IndexOkvedBatch(okved string, os []models.Org) error {
 
 	return nil
 }
+*/

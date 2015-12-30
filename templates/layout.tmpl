@@ -73,5 +73,13 @@ function city_filter(q) {
 	})
 }
 </script>
+{{if .moreScripts}}
+{{range .moreScripts}}
+<script src="{{.}}"></script>
+{{end}}
+{{end}}
+<script>
+(new Image).src="//stat.zhuharev.ru/hit?r"+escape(document.referrer)+";u"+escape(document.URL)+";"+Math.random()
+</script>
 </body>
 </html>

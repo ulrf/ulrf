@@ -1,19 +1,13 @@
-<h1>Российские компании по регионам</h1>
 <input type="text" class="form-control m-b" placeholder="Поиск региона" onkeypress="city_filter(this.value)">
 <div id="regions">
-{{range .Districts.Districts}}
 <div class="clearfix"></div>
-
-<h2>{{.Name}}</h2>
-<div class="clearfix"></div>
-{{ range .Childs }}
+{{ range .Cities }}
 <div class="item col-md-4" data-region="{{.Name}}">
-	<div class="">
+  <div class="">
   <div class="card-block">
-    <a href="/regions/{{.Regioncode}}" class=""><h4 class="card-title">{{.Name}}</h4></a>
+    <a href="/search?city={{.Name}}" class=""><h4 class="card-title">{{.Name}}</h4></a>
   </div>
 </div>
 </div>
-{{end}}
 {{end}}
 </div>

@@ -1,14 +1,15 @@
 {{if .total}}<div class="m-t m-b">
-Найдено результатов:  <b>{{.total}}</b>
+Найдено результатов:  <b>{{.total}}</b> (Страница {{.currPage}} из {{.lastPage}})
 </div>{{end}}
-{{range .orgs}}
+{{range $i,$v := .orgs}}
 <div class="card list-search">
-  <div class="card-block">
-    <h4 class="card-title">{{if .ShortName}}{{.ShortName}}<br> <small>{{.FullName}}</small>{{else}}{{.FullName}}{{end}}  </h4>
+  <div>
+    <a href="/{{.OGRN}}"><h4 class="card-title">{{if .ShortName}}{{.ShortName}}<br> <small>{{.FullName}}</small>{{else}}{{.FullName}}{{end}}  </h4></a>
     <p><b>ОГРН:</b> {{.OGRN}}{{if .INN}} <b>ИНН:</b> {{.INN}} {{end}}</p>
-    <a href="/{{.Id}}">Открыть карточку</a>
   </div>
 </div>
+{{if eq $i 9}}
+{{else}}<hr>{{end}}
 {{end}}
 <nav>
   <ul class="pagination">{{if .prevPage}}
@@ -25,6 +26,12 @@
       <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.nextPage}}" aria-label="Next">
         <span aria-hidden="true">&raquo;</span>
         <span class="sr-only">Next</span>
+      </a>{{end}}
+    </li>
+    {{if .lastPage}}<li>
+      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.lastPage}}" aria-label="Next">
+        <span aria-hidden="true">&raquo;&raquo;</span>
+        <span class="sr-only">Last</span>
       </a>{{end}}
     </li>
   </ul>

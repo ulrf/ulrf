@@ -14,9 +14,9 @@ var (
 	indexCityName  = "city.search"
 	indexEkvdName  = "okved.search"
 	indexes        = map[string]bleve.Index{
-		indexTitleName: nil,
-		indexCityName:  nil,
-		indexEkvdName:  nil,
+		//	indexTitleName: nil,
+		indexCityName: nil,
+		indexEkvdName: nil,
 	}
 )
 
@@ -44,12 +44,6 @@ func NewContext() {
 				panic(e)
 			}
 		}
-
-		dc, e := indexes[key].DocCount()
-		if e != nil {
-			color.Red("%s", e)
-		}
-		color.Green("%s doc count %d", key, dc)
 	}
 }
 

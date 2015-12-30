@@ -3,7 +3,7 @@
 </div>
 <ul>
 {{range $i,$v := .orgs}}
-<li><a href="/{{.Id}}">{{.FullName}}</a>
+<li><a href="/{{.OGRN}}">{{.FullName}}</a>
 {{if eq $i 9}}
 {{else}}<hr>{{end}}
 {{end}}	
@@ -20,8 +20,14 @@
     <li {{if eq . $.currPage}}class="active"{{end}}><a href="/map?p={{.}}">{{.}}</a></li>
     {{end}}
     <li>
-      <a href="/map?p={{.lastPage}}" aria-label="Next">
+      <a href="/map?p={{.nextPage}}" aria-label="Next">
         <span aria-hidden="true">&raquo;</span>
+        <span class="sr-only">Next</span>
+      </a>
+    </li>
+    <li>
+      <a href="/map?p={{.lastPage}}" aria-label="Next">
+        <span aria-hidden="true">&raquo;&raquo;</span>
         <span class="sr-only">Next</span>
       </a>
     </li>

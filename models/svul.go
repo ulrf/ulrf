@@ -122,6 +122,20 @@ type Svul struct {
 		} `xml:"СпОбрЮЛ"`
 	} `xml:"СпОбрЮЛ"`
 
+	Dead struct {
+		Date   string `xml:"ДатаПрекрЮЛ,attr"`
+		Grn    Grn
+		RegOrg struct {
+			Name    string `xml:"НаимНО,attr"`
+			Code    int    `xml:"КодНО,attr"`
+			Address string `xml:"АдрРО,attr"`
+		} `xml:"СвРегОрг"`
+		Why struct {
+			Code    string `xml:"КодСпПрекрЮЛ,attr"`
+			WhyName string `xml:"НаимСпПрекрЮЛ,attr"`
+		} `xml:"СпПрекрЮЛ"`
+	} `xml:"СвПрекрЮЛ"`
+
 	RegOrg struct {
 		Name    string `xml:"НаимНО,attr"`
 		Code    int    `xml:"КодНО,attr"`
@@ -268,8 +282,8 @@ func (s Svul) ToOrg(docId int, loc string) Org {
 	o.DocLocation = loc
 	o.FullName = s.Name.FullName
 	o.ShortName = s.Name.ShortName
-	o.INN = s.INN
-	o.OGRN = s.OGRN
+	o.INN = com.StrTo(s.INN).MustInt64()
+	o.OGRN = com.StrTo(s.OGRN).MustInt64()
 	for _, v := range s.OKVED.Dop {
 		o.OKVEDS = append(o.OKVEDS, v.Code)
 	}
@@ -289,7 +303,7 @@ func (s Svul) ToOrg(docId int, loc string) Org {
 		}
 	}
 
-	o.OPF = s.KodOpf
-	o.KPP = s.KPP
+	o.OPF = com.StrTo(s.KodOpf).MustInt()
+	o.KPP = com.StrTo(s.KPP).MustInt64()
 	return o
 }

@@ -30,3 +30,7 @@ base.leveldb
 log/*
 orgs
 ulrf
+data/*
+ldb/*
+pprof
+search

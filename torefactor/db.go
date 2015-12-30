@@ -1,40 +1,13 @@
 package torefactor
 
 import (
-	"fmt"
-	"github.com/blevesearch/bleve"
-	_ "github.com/blevesearch/bleve/index/store/goleveldb"
-	"github.com/fatih/color"
-	"github.com/go-xorm/xorm"
-	_ "github.com/lib/pq"
-	"github.com/otium/queue"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/ulrf/ulrf/models"
-	"github.com/ulrf/ulrf/modules/search"
 	"github.com/ulrf/ulrf/modules/setting"
-	"os"
-	"strings"
-	"time"
-	"unicode"
-	"unicode/utf8"
 )
 
 var (
-	eng *xorm.Engine
-
-	indexTitleName = "title.search"
-	indexCityName  = "city.search"
-	indexEkvdName  = "okved.search"
-	indexes        = map[string]bleve.Index{
-		indexTitleName: nil,
-		indexCityName:  nil,
-		indexEkvdName:  nil,
-	}
-	indexTitleRatio float64
-	indexCityRatio  float64
-	indexEkvdRatio  float64
-
 	ldb *leveldb.DB
 
 	DocumentsCount int64
@@ -55,67 +28,78 @@ var (
 func initDB(mode string) {
 	L.Trace("Connect to db %s,%s,%s", setting.Db.User, setting.Db.Pass, setting.Db.Database)
 	var e error
+	models.NewRegionsDb()
+	models.NewMetaDb()
+	models.NewSliceDb()
+	models.NewOkveds()
+	models.NewTitles()
+	models.NewCities()
 
 	// todo move this to models
-	eng, e = xorm.NewEngine("postgres", fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable",
+	/*eng, e = xorm.NewEngine("postgres", fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable",
 		setting.Db.User, setting.Db.Pass, setting.Db.Database))
 	if e != nil {
 		panic(e)
-	}
-	models.SetEngine(eng)
+	}*/
+	//models.SetEngine(eng)
 
-	f, e := os.OpenFile("log/sql.log", os.O_CREATE|os.O_WRONLY, 0666)
+	/*f, e := os.OpenFile("log/sql.log", os.O_CREATE|os.O_WRONLY, 0666)
 	if e != nil {
 		panic(e)
-	}
-	eng.ShowDebug = true
-	eng.ShowInfo = true
-	eng.ShowSQL = true
-	eng.ShowErr = true
-	eng.ShowWarn = true
-	eng.Logger = xorm.NewSimpleLogger(f)
+	}*/
+	//eng.ShowDebug = true
+	//eng.ShowInfo = true
+	//eng.ShowSQL = true
+	//eng.ShowErr = true
+	//eng.ShowWarn = true
+	//eng.Logger = xorm.NewSimpleLogger(f)
 
-	e = eng.Sync2(new(models.Org))
-	if e != nil {
-		L.Error("%s", e)
-	}
+	//e = eng.Sync2(new(models.Org))
+	//if e != nil {
+	//	L.Error("%s", e)
+	//}
 
-	//go func() {
-	cnt, e := eng.Count(new(models.Org))
-	if e != nil {
-		L.Error("%s", e)
-	}
-	DocumentsCount = cnt
-	L.Trace("Documents count: %d", DocumentsCount)
-	//}()
-
-	var orgs []models.Org
-	e = eng.Cols("city").Distinct("city").Find(&orgs)
-	if e != nil {
-		panic(e)
-	}
-
-	uF := func(s string) string {
-		if s == "" {
-			return ""
+	/*go func() {
+		cnt, e := eng.Count(new(models.Org))
+		if e != nil {
+			L.Error("%s", e)
 		}
-		r, n := utf8.DecodeRuneInString(s)
-		return string(unicode.ToUpper(r)) + s[n:]
-	}
+		DocumentsCount = cnt
+		L.Trace("Documents count: %d", DocumentsCount)
+	}()*/
 
-	for _, v := range orgs {
-		cities = append(cities, uF(strings.ToLower(v.City)))
-	}
+	/*go func() {
+		var orgs []models.Org
+		e = eng.Cols("city").Distinct("city").Find(&orgs)
+		if e != nil {
+			panic(e)
+		}
 
-	search.NewContext()
+		uF := func(s string) string {
+			if s == "" {
+				return ""
+			}
+			r, n := utf8.DecodeRuneInString(s)
+			return string(unicode.ToUpper(r)) + s[n:]
+		}
 
+		for _, v := range orgs {
+			cities = append(cities, uF(strings.ToLower(v.City)))
+		}
+	}()*/
+
+	//L.Trace("init search indexes")
+	//ssearch.NewContext()
+	//ssearch.NewLiteFind()
+
+	L.Trace("init leveldb")
 	o := &opt.Options{}
 	o.Compression = opt.NoCompression
 	o.BlockSize = opt.KiB * 32
 	o.WriteBuffer = 64 * opt.KiB
-	o.BlockCacheCapacity = 64 * opt.MiB
+	o.BlockCacheCapacity = 4 * opt.MiB
 	if mode == Prod {
-		o.BlockCacheCapacity = 256 * opt.MiB
+		o.BlockCacheCapacity = 64 * opt.MiB
 	}
 	o.OpenFilesCacheCapacity = 100
 	ldb, e = leveldb.OpenFile("base.leveldb", o)
@@ -127,7 +111,7 @@ func initDB(mode string) {
 
 }
 
-func bleveIndex() {
+/*func bleveIndex() {
 	color.Yellow("Start indexing")
 	cnt := DocumentsCount
 	bic, e := indexes[indexTitleName].DocCount()
@@ -247,3 +231,4 @@ func indexBatch(orgs []models.Org) (e error) {
 	close(ch)
 	return nil
 }
+*/

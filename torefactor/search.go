@@ -1,5 +1,6 @@
 package torefactor
 
+/*
 import (
 	_ "github.com/blevesearch/blevex/lang/ru"
 	"github.com/fatih/color"
@@ -19,33 +20,23 @@ func searchAny(q string, page int, t string) (orgs []models.Org, total int, e er
 		if e != nil {
 			color.Red("%s", e)
 		}
-		if total == 0 {
-			go indexOkvedQuery(q)
-		}
 		break
 	case indexCityName:
 		ids, total, e = search.SearchCity(q, page)
 		if e != nil {
 			color.Red("%s", e)
 		}
-		if total < 1 {
-			go indexCityQuery(q)
-		}
+
 		break
 	case indexTitleName:
-		ids, total, e = search.SearchTitle(q, page)
+		idsi, t, e := search.Search(q, page)
 		if e != nil {
 			color.Red("%s", e)
 		}
-		if total < 1 {
-			go indexTitleQuery(q)
-		}
+		ids = search.IntToStringSlice(idsi)
+		color.Green("%s", ids)
+		total = t
 		break
-	}
-
-	if total < 1 {
-		color.Green("search sql")
-		return searchInDb(q, t)
 	}
 
 	e = eng.In("ogrn", ids).Find(&orgs)
@@ -76,9 +67,9 @@ func searchInDb(q string, t string) (orgs []models.Org, total int, e error) {
 		break
 	}
 	return
-}
+}*/
 
-func indexTitleQuery(q string) error {
+/*func indexTitleQuery(q string) error {
 	var (
 		orgs []models.Org
 	)
@@ -91,18 +82,35 @@ func indexTitleQuery(q string) error {
 	return search.IndexTitleBatch(orgs)
 }
 
-func indexCityQuery(q string) error {
+func indexCityQuery(q string) (e error) {
 	var (
-		orgs []models.Org
+		n    = 1000
+		city = strings.ToLower(q)
 	)
 	q = strings.ToUpper(q)
-	e := eng.Cols("ogrn").Where("city = ?", q).Find(&orgs)
-	if e != nil {
-		color.Red("%s", e)
-	}
-	q = strings.ToLower(q)
 
-	return search.IndexCityBatch(q, orgs)
+	cnt, e := eng.Where("city = ?", q).Count(new(models.Org))
+	if e != nil {
+		return e
+	}
+	L.Trace("Index %d orgs(%s)", cnt, city)
+
+	for i := 0; i < int(cnt); i += n {
+		var (
+			orgs []models.Org
+		)
+		e = eng.OrderBy("id").Limit(n, i).Cols("ogrn").Where("city = ?", q).Find(&orgs)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		e = search.IndexCityBatch(city, orgs)
+		if e != nil {
+			color.Red("%s", e)
+			return e
+		}
+	}
+
+	return
 }
 
 func indexOkvedQuery(q string) (e error) {
@@ -178,3 +186,4 @@ func indexQuery(q string) (e error) {
 
 	return nil
 }
+*/

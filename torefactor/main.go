@@ -5,7 +5,6 @@ import (
 	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
-	"github.com/go-xorm/xorm"
 	"github.com/sisteamnik/sitemap"
 	"github.com/ulrf/ulrf/models"
 	"github.com/ulrf/ulrf/modules/setting"
@@ -17,7 +16,14 @@ import (
 )
 
 func RunMacaron(ctx *cli.Context) {
-	setting.NewContext(ctx.String("mode"))
+	mode := ctx.String("mode")
+	setting.NewContext(mode)
+	switch mode {
+	case "prod":
+		macaron.Env = macaron.PROD
+	default:
+		macaron.Env = macaron.DEV
+	}
 	L.Trace("Run with mode %s on host %s.", ctx.String("mode"), setting.Domain)
 	initDB(ctx.String("mode"))
 	m := macaron.New()
@@ -32,68 +38,58 @@ func RunMacaron(ctx *cli.Context) {
 
 	m.Get("/", func(ctx *macaron.Context) {
 		ctx.Data["okveds"] = OKVEDAPI
+		ctx.Data["Title"] = "Каталог российских фирм - " + setting.Domain
+		ctx.Data["Description"] = "Открытые данные миллионов российских юридических лиц на " + setting.Domain
 		ctx.HTML(200, "index")
 	})
 
 	m.Get("/search", func(ctx *macaron.Context) {
 		var (
-			orgs []models.Org
-			e    error
-			q    = ctx.Query("q")
-			page = com.StrTo(ctx.Query("p")).MustInt()
+			orgs  []*models.Org
+			e     error
+			total int
+			q     = ctx.Query("q")
+			page  = com.StrTo(ctx.Query("p")).MustInt()
 		)
-		//q := strings.ToUpper(ctx.Query("q"))
 
 		if page < 1 {
 			page = 1
 		}
 
-		q = q
-
-		var total int
 		if ctx.Query("city") != "" {
-			orgs, total, e = searchAny(ctx.Query("city"), page, indexCityName)
+			orgs, total, e = models.SearchCity(ctx.Query("city"), page)
 			if e != nil {
 				color.Red("%s", e)
 			}
-			//c := strings.ToUpper(ctx.Query("city"))
-			//e = eng.Where("city = ?", c).Limit(10, (page-1)*10).Find(&orgs)
-			//if e != nil {
-			//	color.Red("%s", e)
-			//}
+			ctx.Data["Title"] = "Организации в городе " + ctx.Query("city")
+
 		} else if ctx.Query("okved") != "" {
-			//if !setting.BleveEnabled {
-			//e = eng.Where("okved = ?", strings.ToUpper(ctx.Query("okved"))).Limit(10, (page-1)*10).Find(&orgs)
-			//if e != nil {
-			//	color.Red("%s", e)
-			//}
-			//} else {
-			orgs, total, e = searchAny(ctx.Query("okved"), page, indexEkvdName)
+			orgs, total, e = models.SearchOkved(ctx.Query("okved"), page)
 			if e != nil {
 				color.Red("%s", e)
 			}
-			//}
+			ctx.Data["Title"] = "Поиск: " + ctx.Query("okved")
+
 		} else {
-			//if !setting.BleveEnabled {
-			//e = eng.OrderBy("id").Where("full_name like ?", "%"+strings.ToUpper(ctx.Query("q"))+"%").Limit(10, (page-1)*10).Find(&orgs)
-			//if e != nil {
-			//	color.Red("%s", e)
-			//}
-			//} else {
-			orgs, total, e = searchAny(q, page, indexTitleName)
+			orgs, total, e = models.SearchTitle(q, page)
 			if e != nil {
 				color.Red("%s", e)
 			}
-			//}
+			ctx.Data["Title"] = "Поиск: " + q
+
 		}
 
-		ctx.Data["Title"] = "Поиск: " + q
+		for _, v := range orgs {
+			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
+		}
+
 		ctx.Data["nextPage"] = page + 1
 		if page*10 > total && total != 0 {
 			ctx.Data["nextPage"] = 0
 		}
 		ctx.Data["prevPage"] = page - 1
 		ctx.Data["currPage"] = page
+		ctx.Data["lastPage"] = (total + 10) / 10
 		ctx.Data["total"] = total
 		ctx.Data["searchQuery"] = strings.ToLower(q)
 		ctx.Data["searchCity"] = ctx.Query("city")
@@ -105,38 +101,90 @@ func RunMacaron(ctx *cli.Context) {
 
 	m.Get("/regions", func(ctx *macaron.Context) {
 		ctx.Data["regions"] = cities
-		ctx.Data["Title"] = "Регионы"
+		ctx.Data["Title"] = "Компании РФ по регионам - " + setting.Domain
+		ctx.Data["Description"] = "Поиск по регионам - открытая информация о российских компаниях."
+		ctx.Data["Districts"] = models.Locality()
 		ctx.HTML(200, "regions")
+	})
+
+	m.Get("/regions/:dis", func(ctx *macaron.Context) {
+		ctx.Data["Title"] = models.Locality().RegionName(ctx.ParamsInt(":dis")) + ". Компании региона - " + setting.Domain
+		ctx.Data["Description"] = "Поиск по регионам - открытая информация о российских компаниях."
+		ctx.Data["Cities"] = models.Locality().Cities(ctx.ParamsInt(":dis"))
+		ctx.Data["CurrentDistrict"] = ctx.ParamsInt(":dis")
+		ctx.HTML(200, "district")
+	})
+
+	m.Get("/regions/:dis/:city", func(ctx *macaron.Context) {
+		var (
+			regionId = ctx.ParamsInt(":dis")
+			page     = ctx.QueryInt("p")
+			orgs     = []*models.Org{}
+			total    = 0
+		)
+
+		color.White("%d", page)
+
+		if page < 1 {
+			page = 1
+		}
+
+		ids, total, e := models.RegionsGetRange(regionId, page)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		color.Green("%d", len(ids))
+		color.Green("%v", ids)
+		orgs, e = models.GetOrgs(ids)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		color.Cyan("%d", len(orgs))
+		ctx.Data["orgs"] = orgs
+		ctx.Data["Districts"] = models.Locality()
+		ctx.Data["DistrictId"] = ctx.ParamsInt(":dis")
+
+		ctx.Data["nextPage"] = page + 1
+		if page*10 > total && total != 0 {
+			ctx.Data["nextPage"] = 0
+		}
+		ctx.Data["prevPage"] = page - 1
+		ctx.Data["currPage"] = page
+		ctx.Data["total"] = total
+		ctx.Data["totalPages"] = (total + 10) / 10
+		ctx.Data["pagination"] = makePagination(int(total), page)
+
+		ctx.HTML(200, "city")
 	})
 	m.Get("/okveds", func(ctx *macaron.Context) {
 		ctx.Data["okveds"] = OKVEDAPI
-		ctx.Data["Title"] = "ОКВЭД"
+		ctx.Data["Title"] = "Рубрики по кодам ОКВЭД - " + setting.Domain
+		ctx.Data["Description"] = "Все юридические лица РФ в рубриках по кодам ОКВЭД."
 		ctx.HTML(200, "okveds")
 	})
 
 	m.Get("/okveds/:cat", func(ctx *macaron.Context) {
+		o, _ := OKVEDAPI.GetById(ctx.ParamsInt(":cat"))
 		ctx.Data["okveds"] = OKVEDAPI
-		ctx.Data["okvedsCat"] = com.StrTo(ctx.Params(":cat")).MustInt()
-		ctx.Data["Title"] = "ОКВЭД: Категории"
+		ctx.Data["okvedsCat"] = ctx.ParamsInt(":cat")
+		ctx.Data["Title"] = o.Text + " - " + setting.Domain
+		ctx.Data["Description"] = "Компании РФ в разделе " + o.Text
+
 		ctx.HTML(200, "okvedscat")
 	})
 
 	m.Get("/stat", func(c *macaron.Context) {
 		c.Data["stat"] = struct {
-			DocCount        int64
-			IndexSpeed      float64
-			IndexTitleRatio float64
-			Remaining       time.Duration
+			DocCount   int64
+			IndexSpeed float64
 		}{
 			DocumentsCount,
 			StatIndexSpeed,
-			indexTitleRatio * 100,
-			time.Second * time.Duration((100.0-indexTitleRatio)*StatIndexSpeed),
 		}
 		c.HTML(200, "stat")
 	})
 
-	m.Get("/:id", func(ctx *macaron.Context) {
+	m.Get("/dump/:id", func(ctx *macaron.Context) {
 		var (
 			id = ctx.ParamsInt64(":id")
 		)
@@ -146,30 +194,79 @@ func RunMacaron(ctx *cli.Context) {
 			color.Red("%s", e)
 		}
 
-		s, e := models.GetSvul(o.OGRN, o.DocLocation, o.DocId)
+		bts, e := models.Dump(o.DocLocation, o.DocId)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		ctx.Resp.Header().Set("Content-Type", "application/json")
+		_, e = ctx.Write(bts)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		return
+	})
+
+	m.Get("/:id", func(ctx *macaron.Context) {
+		var (
+			id = ctx.ParamsInt64(":id")
+		)
+
+		if id == 0 {
+			ctx.NotFound()
+			return
+		}
+
+		o, e := models.GetOrg(id)
 		if e != nil {
 			color.Red("%s", e)
 		}
 
-		var orgs []models.Org
-		e = eng.Where("id > ?", ctx.ParamsInt(":id")).Limit(3).Find(&orgs)
+		var (
+			docLoc string
+			docId  int
+		)
+
+		if o != nil {
+			docLoc = o.DocLocation
+			docId = o.DocId
+		}
+
+		s, e := models.GetSvul(ctx.Params(":id"), docLoc, docId)
 		if e != nil {
 			color.Red("%s", e)
 		}
 
-		if len(orgs) != 3 {
-			orgs = orgs[:0]
-			e = eng.Where("id < ?", com.StrTo(ctx.Params(":id")).MustInt()).Limit(3).Find(&orgs)
+		orgs, e := models.SimilarOrgs(id, 3)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		for _, v := range orgs {
+			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
+		}
+		/*	var orgs []models.Org
+			e = eng.Where("id > ?", ctx.ParamsInt(":id")).Limit(3).Find(&orgs)
 			if e != nil {
 				color.Red("%s", e)
 			}
-		}
+
+			if len(orgs) != 3 {
+				orgs = orgs[:0]
+				e = eng.Where("id < ?", com.StrTo(ctx.Params(":id")).MustInt()).Limit(3).Find(&orgs)
+				if e != nil {
+					color.Red("%s", e)
+				}
+			}*/
 
 		// todo tmp
 		//search.IndexCity(o.OGRN, strings.ToLower(o.City))
 
+		ctx.Data["Title"] = s.Name.FullName + " - " + setting.Domain
+		if s.Name.ShortName != "" {
+			ctx.Data["Title"] = s.Name.ShortName + " - " + setting.Domain
+		}
 		ctx.Data["okveds"] = OKVEDAPI
 		ctx.Data["org"] = o
+		ctx.Data["moreScripts"] = []string{"http://api-maps.yandex.ru/2.1/?lang=ru_RU", "/js/yamaps.js"}
 		ctx.Data["orgs"] = orgs
 		ctx.Data["svul"] = s
 		ctx.HTML(200, "get")
@@ -177,59 +274,59 @@ func RunMacaron(ctx *cli.Context) {
 
 	m.Get("/map", func(ctx *macaron.Context) {
 		page := com.StrTo(ctx.Query("p")).MustInt()
-		if page == 0 {
+		if page < 1 {
 			page = 1
 		}
 
-		var orgs []models.Org
-		sess := eng.OrderBy("id")
-		if page > 100 {
-			sess.Where("id > ?", (page-1)*10).Limit(10)
-		} else {
-			sess.Limit(10, (page-1)*10)
-		}
-		e := sess.Find(&orgs)
+		orgs, total, e := models.RangeOrgs(page)
 		if e != nil {
 			color.Red("%s", e)
+		}
+		for _, v := range orgs {
+			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
 		}
 
 		ctx.Data["nextPage"] = page + 1
 		ctx.Data["prevPage"] = page - 1
-		ctx.Data["lastPage"] = DocumentsCount / 10
+		ctx.Data["lastPage"] = total / 10
 		ctx.Data["currPage"] = page
 		ctx.Data["orgs"] = orgs
-		ctx.Data["DocumentsCount"] = DocumentsCount
-		ctx.Data["pagination"] = makePagination(int(DocumentsCount), page)
+		ctx.Data["DocumentsCount"] = total
+		ctx.Data["total"] = total
+		ctx.Data["pagination"] = makePagination(total, page)
+		ctx.Data["Title"] = fmt.Sprintf("Карта сайта, страница %d", page)
 		ctx.HTML(200, "map")
 	})
 
-	numInSitemap := 50
-	for i := 1; i < int(DocumentsCount); i++ {
+	numInSitemap := 50000
+	color.Green("Count Orgs %d", models.OgrnsCount())
+	for i := 1; i < models.OgrnsCount(); i += numInSitemap {
+		L.Trace("Registered %d", i)
 		m.Get("/sitemap."+fmt.Sprint(i)+".xml", func(c *macaron.Context) {
-			color.Yellow("%d", i)
+			color.Cyan("ACCEPT")
 			c.Resp.Header().Set("Content-Type", "text/xml; charset=utf-8")
-			c.WriteHeader(200)
 			var i int
 			arr := strings.Split(c.Req.RequestURI, ".")
 			if len(arr) != 3 {
+				color.Red("bad")
 				return
 			}
 			i = com.StrTo(arr[1]).MustInt()
 
+			color.Green("Get sitemap %d", i)
 			wr, e := sitemap.NewWriter(c.Resp)
 			if e != nil {
 				color.Red("%s", e)
 			}
 
-			var orgs []models.Org
-			e = eng.Cols("id").OrderBy("id").Where("id > ?", i).Limit(numInSitemap, i).Find(&orgs)
+			ids, _, e := models.OgrnsGoodRange(int64(i), int64(numInSitemap))
 			if e != nil {
 				color.Red("%s", e)
 			}
 
 			var it sitemap.Item
-			for _, v := range orgs {
-				it.Loc = "http://" + setting.Domain + "/" + fmt.Sprint(v.Id)
+			for _, v := range ids {
+				it.Loc = "http://" + setting.Domain + "/" + fmt.Sprint(v)
 				it.ChangeFreq = "weekly"
 				it.LastMod = time.Now()
 				it.Priority = 0.8
@@ -244,7 +341,7 @@ func RunMacaron(ctx *cli.Context) {
 			}
 
 		})
-		i += numInSitemap - 1
+
 	}
 	m.Get("/sitemap.xml", func(c *macaron.Context) {
 		c.Resp.Header().Set("Content-Type", "text/xml; charset=utf-8")
@@ -255,7 +352,7 @@ func RunMacaron(ctx *cli.Context) {
 			color.Red("%s", e)
 		}
 
-		for i := 1; i < int(DocumentsCount); i++ {
+		for i := 1; i < models.OgrnsCount(); i++ {
 			e = wr.Put(sitemap.NewIndexItem("http://"+setting.Domain+"/sitemap."+fmt.Sprint(i)+".xml",
 				time.Now()))
 			if e != nil {
@@ -335,15 +432,4 @@ func makePagination(ctn, cur int) []int {
 
 	color.Yellow("%d %d, %v", start, end, res)
 	return res
-}
-
-func getOrg(eng *xorm.Engine, id int64) (*models.Org, error) {
-	o := new(models.Org)
-	o.Id = id
-	_, e := eng.Get(o)
-	return nil, e
-}
-
-func GetOrg(id int64) (*models.Org, error) {
-	return getOrg(eng, id)
 }
