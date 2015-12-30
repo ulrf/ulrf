@@ -264,6 +264,7 @@ func RunMacaron(ctx *cli.Context) {
 		if s.Name.ShortName != "" {
 			ctx.Data["Title"] = s.Name.ShortName + " - " + setting.Domain
 		}
+		ctx.Data["Description"] = "Информация о компании " + s.Name.FullName
 		ctx.Data["okveds"] = OKVEDAPI
 		ctx.Data["org"] = o
 		ctx.Data["moreScripts"] = []string{"http://api-maps.yandex.ru/2.1/?lang=ru_RU", "/js/yamaps.js"}
