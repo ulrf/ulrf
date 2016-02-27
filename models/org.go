@@ -19,6 +19,7 @@ type Org struct {
 	ShortName string `json:"short_name" xorm:"TEXT"`
 	RegionId  int    `json:"region_id" xorm:"index"`
 	City      string `xorm:"index"`
+	CityId    int64  `json:"city_id"`
 
 	INN    int64    `json:"inn" xorm:"inn"`
 	OGRN   int64    `json:"ogrn" xorm:"unique index 'ogrn'"`

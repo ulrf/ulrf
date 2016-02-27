@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/fatih/color"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"math/rand"
@@ -28,6 +30,14 @@ func GetOrg(ogrn int64) (o *Org, e error) {
 
 	v, e := metaDb.Get(i2b(ogrn), nil)
 	if e != nil {
+		if e == leveldb.ErrNotFound {
+			s, e := GetSvul(fmt.Sprint(ogrn), "", 0)
+			if e != nil {
+				return nil, e
+			}
+			oo := s.ToOrg(0, "")
+			return &oo, nil
+		}
 		return nil, e
 	}
 
@@ -54,6 +64,7 @@ func UnmarshalOrg(bts []byte) (o *Org, e error) {
 }
 
 func GetOrgs(ogrns []int64) (orgs []*Org, e error) {
+	color.Green("%d, ", ogrns)
 	for _, ogrn := range ogrns {
 		o, e := GetOrg(ogrn)
 		if e != nil {

@@ -21,25 +21,24 @@ func OgrnsRange(page int) ([]int64, int, error) {
 	var (
 		countInPage int64 = 10
 	)
-	arr, t, e := ogrns.Limit(countInPage, int64(page)*countInPage)
+	arr, e := ogrns.Limit(countInPage, int64(page)*countInPage*8)
 	if e != nil {
 		return nil, 0, e
 	}
-	return uint2int(arr), t, nil
+	return uint2int(arr), len(arr), nil
 }
 
 // todo change name
 func OgrnsGoodRange(offset, limit int64) ([]int64, int, error) {
-	arr, t, e := ogrns.Limit(limit, offset)
+	arr, e := ogrns.Limit(limit, offset)
 	if e != nil {
 		return nil, 0, e
 	}
-	return uint2int(arr), t, nil
+	return uint2int(arr), len(arr), nil
 }
 
 func OgrnsCount() int {
-	_, t, _ := OgrnsGoodRange(0, 0)
-	return t
+	return ogrns.Len()
 }
 
 func uint2int(arr []uint64) (res []int64) {

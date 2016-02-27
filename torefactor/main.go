@@ -3,11 +3,13 @@ package torefactor
 import (
 	"fmt"
 	"github.com/Unknwon/com"
+	"github.com/Unknwon/paginater"
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
 	"github.com/sisteamnik/sitemap"
 	"github.com/ulrf/ulrf/models"
 	"github.com/ulrf/ulrf/modules/setting"
+	"github.com/zhuharev/raddress"
 	"gopkg.in/macaron.v1"
 	"html/template"
 	"strings"
@@ -38,7 +40,7 @@ func RunMacaron(ctx *cli.Context) {
 
 	m.Get("/", func(ctx *macaron.Context) {
 		ctx.Data["okveds"] = OKVEDAPI
-		ctx.Data["Title"] = "Каталог российских фирм - " + setting.Domain
+		ctx.Data["Title"] = "Каталог российских фирм"
 		ctx.Data["Description"] = "Открытые данные миллионов российских юридических лиц на " + setting.Domain
 		ctx.HTML(200, "index")
 	})
@@ -56,7 +58,10 @@ func RunMacaron(ctx *cli.Context) {
 			page = 1
 		}
 
-		if ctx.Query("city") != "" {
+		if city := ctx.Query("city"); city != "" {
+			ritem := raddress.GetCityRegion(city)
+			ctx.Data["RegionName"] = ritem.Name
+			ctx.Data["RegionId"] = models.Locality().RegionId(ritem.Name)
 			orgs, total, e = models.SearchCity(ctx.Query("city"), page)
 			if e != nil {
 				color.Red("%s", e)
@@ -83,6 +88,8 @@ func RunMacaron(ctx *cli.Context) {
 			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
 		}
 
+		ctx.Data["paginater"] = paginater.New(int(total), 10, page, 10)
+
 		ctx.Data["nextPage"] = page + 1
 		if page*10 > total && total != 0 {
 			ctx.Data["nextPage"] = 0
@@ -101,17 +108,21 @@ func RunMacaron(ctx *cli.Context) {
 
 	m.Get("/regions", func(ctx *macaron.Context) {
 		ctx.Data["regions"] = cities
-		ctx.Data["Title"] = "Компании РФ по регионам - " + setting.Domain
+		ctx.Data["Title"] = "Компании РФ по регионам"
 		ctx.Data["Description"] = "Поиск по регионам - открытая информация о российских компаниях."
 		ctx.Data["Districts"] = models.Locality()
 		ctx.HTML(200, "regions")
 	})
 
 	m.Get("/regions/:dis", func(ctx *macaron.Context) {
-		ctx.Data["Title"] = models.Locality().RegionName(ctx.ParamsInt(":dis")) + ". Компании региона - " + setting.Domain
+		ctx.Data["Title"] = models.Locality().RegionName(ctx.ParamsInt(":dis")) + ". Компании региона"
 		ctx.Data["Description"] = "Поиск по регионам - открытая информация о российских компаниях."
 		ctx.Data["Cities"] = models.Locality().Cities(ctx.ParamsInt(":dis"))
 		ctx.Data["CurrentDistrict"] = ctx.ParamsInt(":dis")
+		ctx.Data["RegionName"] = models.Locality().RegionName(ctx.ParamsInt(":dis"))
+		if ctx.Query("index") == "true" {
+			go models.IndexRegion(ctx.ParamsInt(":dis"))
+		}
 		ctx.HTML(200, "district")
 	})
 
@@ -158,7 +169,7 @@ func RunMacaron(ctx *cli.Context) {
 	})
 	m.Get("/okveds", func(ctx *macaron.Context) {
 		ctx.Data["okveds"] = OKVEDAPI
-		ctx.Data["Title"] = "Рубрики по кодам ОКВЭД - " + setting.Domain
+		ctx.Data["Title"] = "Рубрики по кодам ОКВЭД"
 		ctx.Data["Description"] = "Все юридические лица РФ в рубриках по кодам ОКВЭД."
 		ctx.HTML(200, "okveds")
 	})
@@ -167,7 +178,7 @@ func RunMacaron(ctx *cli.Context) {
 		o, _ := OKVEDAPI.GetById(ctx.ParamsInt(":cat"))
 		ctx.Data["okveds"] = OKVEDAPI
 		ctx.Data["okvedsCat"] = ctx.ParamsInt(":cat")
-		ctx.Data["Title"] = o.Text + " - " + setting.Domain
+		ctx.Data["Title"] = o.Text
 		ctx.Data["Description"] = "Компании РФ в разделе " + o.Text
 
 		ctx.HTML(200, "okvedscat")
@@ -184,21 +195,21 @@ func RunMacaron(ctx *cli.Context) {
 		c.HTML(200, "stat")
 	})
 
-	m.Get("/dump/:id", func(ctx *macaron.Context) {
+	m.Get("/:id/dump", func(ctx *macaron.Context) {
 		var (
-			id = ctx.ParamsInt64(":id")
+		//id = ctx.ParamsInt64(":id")
 		)
 
-		o, e := models.GetOrg(id)
+		dl, id, e := models.LookUpLoc(ctx.Params(":id"))
 		if e != nil {
 			color.Red("%s", e)
 		}
 
-		bts, e := models.Dump(o.DocLocation, o.DocId)
+		bts, e := models.Dump(dl, id)
 		if e != nil {
 			color.Red("%s", e)
 		}
-		ctx.Resp.Header().Set("Content-Type", "application/json")
+		ctx.Resp.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, e = ctx.Write(bts)
 		if e != nil {
 			color.Red("%s", e)
@@ -219,6 +230,9 @@ func RunMacaron(ctx *cli.Context) {
 		o, e := models.GetOrg(id)
 		if e != nil {
 			color.Red("%s", e)
+			ctx.Resp.WriteHeader(404)
+			ctx.Write([]byte("<!doctype html><title></title>Не найдено <a href='/'>Домой</a>"))
+			return
 		}
 
 		var (
@@ -260,9 +274,9 @@ func RunMacaron(ctx *cli.Context) {
 		// todo tmp
 		//search.IndexCity(o.OGRN, strings.ToLower(o.City))
 
-		ctx.Data["Title"] = s.Name.FullName + " - " + setting.Domain
+		ctx.Data["Title"] = s.Name.FullName
 		if s.Name.ShortName != "" {
-			ctx.Data["Title"] = s.Name.ShortName + " - " + setting.Domain
+			ctx.Data["Title"] = s.Name.ShortName
 		}
 		ctx.Data["Description"] = "Информация о компании " + s.Name.FullName
 		ctx.Data["okveds"] = OKVEDAPI
@@ -283,9 +297,12 @@ func RunMacaron(ctx *cli.Context) {
 		if e != nil {
 			color.Red("%s", e)
 		}
+		total = models.OgrnsCount()
 		for _, v := range orgs {
 			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
 		}
+
+		ctx.Data["paginater"] = paginater.New(int(total), 10, page, 10)
 
 		ctx.Data["nextPage"] = page + 1
 		ctx.Data["prevPage"] = page - 1

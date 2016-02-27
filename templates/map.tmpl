@@ -9,27 +9,23 @@
 {{end}}	
 </ul>
 <nav>
-  <ul class="pagination">{{if .prevPage}}
-    <li>
-      <a href="/map" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
-    </li>{{end}}
-    {{range .pagination}}
-    <li {{if eq . $.currPage}}class="active"{{end}}><a href="/map?p={{.}}">{{.}}</a></li>
+  <ul class="pagination">
+{{if not .paginater.IsFirst}}
+<li><a href="/map">Первая</a></li>{{end}}
+
+
+{{range .paginater.Pages}}
+    {{if eq .Num -1}}
+      
+    {{else}}
+<li {{if .IsCurrent}}class="active"(current){{end}}><a href="/map?p={{.Num}}">{{.Num}}</a></li>
     {{end}}
-    <li>
-      <a href="/map?p={{.nextPage}}" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
-    </li>
-    <li>
-      <a href="/map?p={{.lastPage}}" aria-label="Next">
-        <span aria-hidden="true">&raquo;&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
-    </li>
+{{end}}
+
+
+{{if not .paginater.IsLast}}
+<li><a href="/map?p={{.paginater.TotalPages}}">Последняя ({{.paginater.TotalPages}})</a></li>{{end}}
   </ul>
 </nav>
+
+

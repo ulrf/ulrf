@@ -1,3 +1,5 @@
+<a href="/regions/{{.RegionId}}">{{.RegionName}}</a>
+
 {{if .total}}<div class="m-t m-b">
 Найдено результатов:  <b>{{.total}}</b> (Страница {{.currPage}} из {{.lastPage}})
 </div>{{end}}
@@ -12,27 +14,23 @@
 {{else}}<hr>{{end}}
 {{end}}
 <nav>
-  <ul class="pagination">{{if .prevPage}}
-    <li>
-      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.prevPage}}" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
-    </li>{{end}}
-     {{range .pagination}}
-    <li {{if eq . $.currPage}}class="active"{{end}}><a href="/search?city={{$.searchCity}}&okved={{$.searchOkved}}&q={{$.searchQuery}}&p={{.}}">{{.}}</a></li>
+  <ul class="pagination">
+{{if not .paginater.IsFirst}}
+<li><a href="/search?city={{$.searchCity}}&okved={{$.searchOkved}}&q={{$.searchQuery}}">Первая</a></li>{{end}}
+
+
+{{range .paginater.Pages}}
+    {{if eq .Num -1}}
+      
+    {{else}}
+<li {{if .IsCurrent}}class="active"(current){{end}}><a href="/search?city={{$.searchCity}}&okved={{$.searchOkved}}&q={{$.searchQuery}}&p={{.Num}}">{{.Num}}</a></li>
     {{end}}
-    {{if .nextPage}}<li>
-      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.nextPage}}" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>{{end}}
-    </li>
-    {{if .lastPage}}<li>
-      <a href="/search?city={{.searchCity}}&okved={{.searchOkved}}&q={{.searchQuery}}&p={{.lastPage}}" aria-label="Next">
-        <span aria-hidden="true">&raquo;&raquo;</span>
-        <span class="sr-only">Last</span>
-      </a>{{end}}
-    </li>
+{{end}}
+
+
+{{if not .paginater.IsLast}}
+<li><a href="/search?city={{$.searchCity}}&okved={{$.searchOkved}}&q={{$.searchQuery}}&p={{.paginater.TotalPages}}">Последняя ({{.paginater.TotalPages}})</a></li>{{end}}
   </ul>
 </nav>
+
+

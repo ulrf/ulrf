@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/Unknwon/com"
 	"github.com/clbanning/x2j"
 	"github.com/fatih/color"
 	"github.com/pquerna/ffjson/ffjson"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/ulrf/ulrf/modules/setting"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
@@ -44,6 +47,12 @@ func getSvul(ogrn string, docLoc string, id int) (s Svul, e error) {
 		go SetSvultoLevelDb(&s)
 		color.Green("found with docloc")
 		return s, nil
+	}
+	if docLoc == "" {
+		docLoc, id, e = LookUpLoc(ogrn)
+		if e != nil {
+			return s, e
+		}
 	}
 	s, e = GetFromZipDb(docLoc, id)
 	if e != nil {
@@ -101,19 +110,33 @@ var (
 
 func GetFromZipDb(docLoc string, id int) (s Svul, e error) {
 	var (
-		bts   []byte
 		start = time.Now()
+		ss    []Svul
 	)
-	bts, e = getFixed(docLoc, id)
+
+	ss, e = UnmarshalAll(docLoc)
 	if e != nil {
 		return
 	}
-	s, e = unmarshal(bts, id)
-	if e != nil {
-		return
+	for i, v := range ss {
+		if i == id {
+			s = v
+		}
+		e = SetSvultoLevelDb(&v)
+		if e != nil {
+			color.Red("%s", e)
+		}
 	}
 	color.Green("[xml unmarshaled] %s", time.Since(start))
 
+	return
+}
+
+func getRaw(in []byte, id int) (bts []byte, e error) {
+
+	vals, e := x2j.ValuesFromTagPath(string(in), "EGRUL.СвЮЛ")
+	fmt.Println(len(vals))
+	bts, e = json.MarshalIndent(vals[id], " ", " ")
 	return
 }
 
@@ -134,6 +157,10 @@ func dump(docLoc string, id int) (bts []byte, e error) {
 		return
 	}
 	return getRaw(bts, id)
+}
+
+func reader(docLoc string, id int) (io.Reader, error) {
+	return nil, nil
 }
 
 func getFixed(docLoc string, id int) (bts []byte, e error) {
@@ -205,90 +232,103 @@ func Fixed(in io.Reader) ([]byte, error) {
 	return buf, e
 }
 
-func unmarshal(in []byte, id int) (s Svul, e error) {
-	f := bytes.NewReader(in)
-	dec := xml.NewDecoder(f)
-	i := 0
-	for {
-		t, _ := dec.Token()
-		if t == nil {
-			break
-		}
-		switch se := t.(type) {
-		case xml.StartElement:
-			if se.Name.Local == "СвЮЛ" {
-				if i != id {
-					i++
-					continue
-				}
+func charsetReader(_ string, r io.Reader) (io.Reader, error) {
+	return transform.NewReader(r, charmap.Windows1251.NewDecoder()), nil
+}
 
-				e = dec.DecodeElement(&s, &se)
+func unmarshal(docLoc string, id int) (s Svul, e error) {
+
+	var (
+		start = time.Now()
+		dname = setting.XMLDBZIP.Path
+		in    io.Reader
+		rc    *zip.ReadCloser
+		dl    = getXmlLoc(docLoc)
+	)
+
+	if dl == "" {
+		e = fmt.Errorf("%s empty doc with id %d", dl, id)
+		return
+	}
+	rc, e = zip.OpenReader(dname + "/" + dl)
+	if e != nil {
+		return
+	}
+	color.Green("[reader opened] %s", time.Since(start))
+	for _, v := range rc.File {
+		if v.Name == docLoc {
+			in, e = v.Open()
+			if e != nil {
 				return
 			}
+			dec := xml.NewDecoder(in)
+			dec.CharsetReader = charsetReader
+			i := 0
+			for {
+				t, _ := dec.Token()
+				if t == nil {
+					break
+				}
+				switch se := t.(type) {
+				case xml.StartElement:
+					if se.Name.Local == "СвЮЛ" {
+						if i != id {
+							i++
+							continue
+						}
+
+						e = dec.DecodeElement(&s, &se)
+						return
+					}
+				}
+			}
+			return
 		}
 	}
 	return
 }
 
-func getRaw(in []byte, id int) (bts []byte, e error) {
+func UnmarshalAll(docLoc string) (s []Svul, e error) {
 
-	vals, e := x2j.ValuesFromTagPath(string(in), "EGRUL.СвЮЛ")
-	fmt.Println(len(vals))
-	bts, e = json.MarshalIndent(vals[id], " ", " ")
-	return //[]byte(s), e
-
-	/*var (
-		f    = bytes.NewReader(in)
-		dec  = xml.NewDecoder(f)
-		i    = 0
-		here = false
-		wr   = bytes.NewBuffer(nil)
+	var (
+		start = time.Now()
+		dname = setting.XMLDBZIP.Path
+		in    io.Reader
+		rc    *zip.ReadCloser
+		dl    = getXmlLoc(docLoc)
 	)
 
-	for {
-		t, _ := dec.Token()
-		if t == nil {
-			break
-		}
-		switch se := t.(type) {
-		case xml.StartElement:
-			if se.Name.Local == "СвЮЛ" {
-				if i != id {
-					i++
-					continue
-				}
-				here = true
-				for _, v := range se.Attr {
-					s := fmt.Sprintf("%s %s\n", v.Name, v.Value)
-					wr.WriteString(s)
-				}
-				//e = dec.DecodeElement(&s, &se)
-				//return
-			} else if here {
-				for _, v := range se.Attr {
-					wr.WriteString(fmt.Sprintf("%s %s\n", v.Name, v.Value))
-				}
-			}
-		}
+	if dl == "" {
+		e = fmt.Errorf("%s empty doc with id %d", dl)
+		return
 	}
-	return wr.Bytes(), nil*/
-}
-
-func UnmarshalAll(in []byte) (s []Svul, e error) {
-	f := bytes.NewReader(in)
-	dec := xml.NewDecoder(f)
-	for {
-		sv := Svul{}
-		t, _ := dec.Token()
-		if t == nil {
-			break
-		}
-		switch se := t.(type) {
-		case xml.StartElement:
-			if se.Name.Local == "СвЮЛ" {
-				e = dec.DecodeElement(&sv, &se)
-				s = append(s, sv)
-				continue
+	rc, e = zip.OpenReader(dname + "/" + dl)
+	if e != nil {
+		return
+	}
+	color.Green("[reader opened] %s", time.Since(start))
+	for _, v := range rc.File {
+		if v.Name == docLoc {
+			in, e = v.Open()
+			if e != nil {
+				return
+			}
+			dec := xml.NewDecoder(in)
+			dec.CharsetReader = charsetReader
+			for {
+				sv := Svul{}
+				t, _ := dec.Token()
+				if t == nil {
+					break
+				}
+				switch se := t.(type) {
+				case xml.StartElement:
+					if se.Name.Local == "СвЮЛ" {
+						e = dec.DecodeElement(&sv, &se)
+						s = append(s, sv)
+						continue
+					}
+				}
 			}
 		}
 	}
@@ -337,4 +377,51 @@ func getXmlLoc(name string) string {
 		return fname
 	}
 	return ""
+}
+
+var (
+	lookdb *leveldb.DB
+)
+
+func initlDb(path string) (e error) {
+	if path == "" {
+		path = "data/opa"
+	}
+	// level
+	o := &opt.Options{}
+	o.Compression = opt.NoCompression
+	o.BlockSize = opt.KiB * 32
+	o.WriteBuffer = 64 * opt.KiB
+	o.BlockCacheCapacity = 64 * opt.MiB
+	lookdb, e = leveldb.OpenFile(path, o)
+	if e != nil {
+		return
+	}
+	return
+}
+
+func init() {
+	e := initlDb("")
+	if e != nil {
+		panic(e)
+	}
+}
+
+func LookUpLoc(ogrn string) (docLoc string, id int, e error) {
+
+	bts, e := lookdb.Get([]byte(ogrn), nil)
+	if e != nil {
+		color.Green("%s", e)
+	}
+
+	arr := strings.Split(string(bts), " ")
+	if len(arr) != 2 {
+		e = fmt.Errorf("Len arr not 2, %d (%s)", len(arr), bts)
+		return
+	}
+	docLoc = arr[1]
+	id = com.StrTo(arr[0]).MustInt()
+
+	color.Green("LOOKUPED %s %s", ogrn, docLoc)
+	return
 }
