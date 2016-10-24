@@ -8,6 +8,7 @@ import (
 	"github.com/zhuharev/raddress"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -36,6 +37,7 @@ func NewCities() {
 }
 
 func searchCity(city string, page int) ([]int64, int, error) {
+
 	city = strings.ToUpper(city)
 	page--
 	bts, e := cities.Get([]byte(city), nil)
@@ -57,6 +59,7 @@ func searchCity(city string, page int) ([]int64, int, error) {
 	}
 
 	res = res[sliceStart:sliceEnd]
+
 	return []int64(res), total, e
 }
 
@@ -72,12 +75,14 @@ func getAllCities() (res []string, e error) {
 }
 
 func SearchCity(city string, page int) (res []*Org, t int, e error) {
+	start := time.Now()
 	ids, total, e := searchCity(city, page)
 	if e != nil {
 		return
 	}
 	t = total
-	res, e = GetOrgs(ids)
+	printNeedSince(start, time.Millisecond*100, "Searched")
+	res, e = GetMetaOrgs(ids)
 	return
 }
 

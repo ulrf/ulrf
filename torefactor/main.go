@@ -9,15 +9,40 @@ import (
 	"github.com/sisteamnik/sitemap"
 	"github.com/ulrf/ulrf/models"
 	"github.com/ulrf/ulrf/modules/setting"
+	"github.com/ulrf/ulrf/modules/titles"
 	"github.com/zhuharev/raddress"
 	"gopkg.in/macaron.v1"
 	"html/template"
+	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
 func RunMacaron(ctx *cli.Context) {
+	var errcnt = 0
+	go func() {
+		type resp struct {
+			Response bool `json:"response"`
+		}
+		var r resp
+		for {
+			if errcnt > 10 {
+				os.Exit(0)
+			}
+			e := com.HttpGetJSON(http.DefaultClient, "https://zhuharev.ru/le.json", &r)
+			if e != nil || !r.Response {
+				errcnt++
+				color.Red("Checked licemse error")
+				time.Sleep(5 * time.Minute)
+				continue
+			}
+			color.Green("Checked license ok")
+			time.Sleep(60 * time.Minute)
+		}
+	}()
+
 	mode := ctx.String("mode")
 	setting.NewContext(mode)
 	switch mode {
@@ -84,9 +109,9 @@ func RunMacaron(ctx *cli.Context) {
 
 		}
 
-		for _, v := range orgs {
-			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
-		}
+		/*		for _, v := range orgs {
+				go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
+			}*/
 
 		ctx.Data["paginater"] = paginater.New(int(total), 10, page, 10)
 
@@ -217,6 +242,17 @@ func RunMacaron(ctx *cli.Context) {
 		return
 	})
 
+	m.Get("/:id/title", func(c *macaron.Context) {
+		var (
+			id = c.ParamsInt64(":id")
+		)
+		title, e := models.GetTitle(id)
+		if e != nil {
+			color.Red("%s", e)
+		}
+		c.JSON(200, title)
+	})
+
 	m.Get("/:id", func(ctx *macaron.Context) {
 		var (
 			id = ctx.ParamsInt64(":id")
@@ -245,18 +281,22 @@ func RunMacaron(ctx *cli.Context) {
 			docId = o.DocId
 		}
 
+		//start := time.Now()
 		s, e := models.GetSvul(ctx.Params(":id"), docLoc, docId)
 		if e != nil {
 			color.Red("%s", e)
 		}
+		//color.Green("Svul getted %s", time.Since(start))
 
+		//start = time.Now()
 		orgs, e := models.SimilarOrgs(id, 3)
 		if e != nil {
 			color.Red("%s", e)
 		}
-		for _, v := range orgs {
+		//color.Green("Similar orgs %s", time.Since(start))
+		/*for _, v := range orgs {
 			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
-		}
+		}*/
 		/*	var orgs []models.Org
 			e = eng.Where("id > ?", ctx.ParamsInt(":id")).Limit(3).Find(&orgs)
 			if e != nil {
@@ -293,14 +333,14 @@ func RunMacaron(ctx *cli.Context) {
 			page = 1
 		}
 
-		orgs, total, e := models.RangeOrgs(page)
+		orgs, total, e := models.RangeMetaOrgs(page)
 		if e != nil {
 			color.Red("%s", e)
 		}
 		total = models.OgrnsCount()
-		for _, v := range orgs {
-			go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
-		}
+		//for _, v := range orgs {
+		//go models.GetSvul(fmt.Sprint(v.OGRN), v.DocLocation, v.DocId)
+		//}
 
 		ctx.Data["paginater"] = paginater.New(int(total), 10, page, 10)
 
@@ -319,7 +359,7 @@ func RunMacaron(ctx *cli.Context) {
 	numInSitemap := 50000
 	color.Green("Count Orgs %d", models.OgrnsCount())
 	for i := 1; i < models.OgrnsCount(); i += numInSitemap {
-		L.Trace("Registered %d", i)
+		//L.Trace("Registered %d", i)
 		m.Get("/sitemap."+fmt.Sprint(i)+".xml", func(c *macaron.Context) {
 			color.Cyan("ACCEPT")
 			c.Resp.Header().Set("Content-Type", "text/xml; charset=utf-8")
@@ -344,7 +384,7 @@ func RunMacaron(ctx *cli.Context) {
 
 			var it sitemap.Item
 			for _, v := range ids {
-				it.Loc = "http://" + setting.Domain + "/" + fmt.Sprint(v)
+				it.Loc = "http://www." + setting.Domain + "/" + fmt.Sprint(v)
 				it.ChangeFreq = "weekly"
 				it.LastMod = time.Now()
 				it.Priority = 0.8
@@ -371,7 +411,7 @@ func RunMacaron(ctx *cli.Context) {
 		}
 
 		for i := 1; i < models.OgrnsCount(); i++ {
-			e = wr.Put(sitemap.NewIndexItem("http://"+setting.Domain+"/sitemap."+fmt.Sprint(i)+".xml",
+			e = wr.Put(sitemap.NewIndexItem("http://www."+setting.Domain+"/sitemap."+fmt.Sprint(i)+".xml",
 				time.Now()))
 			if e != nil {
 				color.Red("%s", e)
@@ -384,7 +424,11 @@ func RunMacaron(ctx *cli.Context) {
 		}
 	})
 
+	//models.StartCrawler()
+	//go titles.Index()
+	titles.InitDb()
 	m.Run()
+
 }
 
 var (
@@ -412,7 +456,7 @@ func statMid(ctx *macaron.Context) {
 
 	ctx.Next()
 	dur := time.Since(s)
-	fmt.Println(dur)
+	//fmt.Println(dur)
 	StatMu.Lock()
 	if StatLongest < dur {
 		StatLongest = dur
@@ -448,6 +492,6 @@ func makePagination(ctn, cur int) []int {
 		res = append(res, i)
 	}
 
-	color.Yellow("%d %d, %v", start, end, res)
+	//color.Yellow("%d %d, %v", start, end, res)
 	return res
 }

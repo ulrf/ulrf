@@ -31,7 +31,7 @@ ul {
 <body>
 <div class="container">
 	<nav class="navbar navbar-dark bg-primary m-b m-t">
-  <a class="navbar-brand" href="/">{{.domain}}</a>
+  <a class="navbar-brand" href="/"><img src="https://blog.gruzopoisk.ru/upload/catalog.png" style="height:30px;float:left;margin-right:10px;" alt=""> {{.domain}}</a>
   <ul class="nav navbar-nav ">
     <li class="nav-item">
       <a class="nav-link {{if eq .url.Path "/regions"}}active{{end}}" href="/regions">Регионы</a>
@@ -82,7 +82,13 @@ function city_filter(q) {
 {{end}}
 {{end}}
 <script>
-(new Image).src="//stat.zhuharev.ru/hit?r"+escape(document.referrer)+";u"+escape(document.URL)+";"+Math.random()
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-61195018-46', 'auto');
+  ga('send', 'pageview');
 </script>
 </body>
 </html>

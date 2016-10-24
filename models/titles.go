@@ -43,6 +43,6 @@ func SearchTitle(okved string, page int) (res []*Org, t int, e error) {
 		return
 	}
 	t = total
-	res, e = GetOrgs(ids)
+	res, e = GetMetaOrgs(ids)
 	return
 }

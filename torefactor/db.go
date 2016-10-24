@@ -1,14 +1,12 @@
 package torefactor
 
 import (
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/ulrf/ulrf/models"
 	"github.com/ulrf/ulrf/modules/setting"
 )
 
 var (
-	ldb *leveldb.DB
+	//ldb *leveldb.DB
 
 	DocumentsCount int64
 	StatIndexSpeed float64
@@ -27,13 +25,14 @@ var (
 
 func initDB(mode string) {
 	L.Trace("Connect to db %s,%s,%s", setting.Db.User, setting.Db.Pass, setting.Db.Database)
-	var e error
+	//var e error
 	models.NewRegionsDb()
 	models.NewMetaDb()
 	models.NewSliceDb()
 	models.NewOkveds()
 	models.NewTitles()
 	models.NewCities()
+	models.NewSvulDb()
 
 	// todo move this to models
 	/*eng, e = xorm.NewEngine("postgres", fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable",
@@ -92,22 +91,22 @@ func initDB(mode string) {
 	//ssearch.NewContext()
 	//ssearch.NewLiteFind()
 
-	L.Trace("init leveldb")
-	o := &opt.Options{}
-	o.Compression = opt.NoCompression
-	o.BlockSize = opt.KiB * 32
-	o.WriteBuffer = 64 * opt.KiB
-	o.BlockCacheCapacity = 4 * opt.MiB
-	if mode == Prod {
-		o.BlockCacheCapacity = 64 * opt.MiB
-	}
-	o.OpenFilesCacheCapacity = 100
-	ldb, e = leveldb.OpenFile("base.leveldb", o)
-	if e != nil {
-		panic(e)
-	}
+	/*	L.Trace("init leveldb")
+		o := &opt.Options{}
+		o.Compression = opt.NoCompression
+		o.BlockSize = opt.KiB * 32
+		o.WriteBuffer = 64 * opt.KiB
+		o.BlockCacheCapacity = 4 * opt.MiB
+		if mode == Prod {
+			o.BlockCacheCapacity = 64 * opt.MiB
+		}
+		o.OpenFilesCacheCapacity = 50
+		ldb, e = leveldb.OpenFile("base.leveldb", o)
+		if e != nil {
+			panic(e)
+		}
 
-	models.SetLevelDb(ldb)
+		models.SetLevelDb(ldb)*/
 
 }
 

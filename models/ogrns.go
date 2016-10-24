@@ -17,10 +17,11 @@ func NewSliceDb() {
 }
 
 func OgrnsRange(page int) ([]int64, int, error) {
+	return ogrnsRange(page, 10)
+}
+
+func ogrnsRange(page int, countInPage int64) ([]int64, int, error) {
 	page--
-	var (
-		countInPage int64 = 10
-	)
 	arr, e := ogrns.Limit(countInPage, int64(page)*countInPage*8)
 	if e != nil {
 		return nil, 0, e
@@ -30,7 +31,7 @@ func OgrnsRange(page int) ([]int64, int, error) {
 
 // todo change name
 func OgrnsGoodRange(offset, limit int64) ([]int64, int, error) {
-	arr, e := ogrns.Limit(limit, offset)
+	arr, e := ogrns.Limit(limit, offset*8)
 	if e != nil {
 		return nil, 0, e
 	}
